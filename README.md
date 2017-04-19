@@ -1,5 +1,5 @@
-# fTrader
-Trader Tools and Utilities
+# fTrade
+Trade Tools and Utilities
 
 ## Folder Structure
 + AssetMgmt
