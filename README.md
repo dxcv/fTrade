@@ -25,13 +25,18 @@ Trade Tools and Utilities
   + talib: pip install TA_Lib-0.4.10-cp27-cp27m-win32.whl
 + MongoDB as Windows Service: http://jingyan.baidu.com/article/6b97984dbeef881ca2b0bf3e.html
   + Register MongoDB Service
-    mongod -dbpath "D:\MongoDB\Server\3.4\Data\db" -logpath "D:\MongoDB\Server\3.4\Data\log\MongoDB.log" -install -serviceName "MongoDB"
+    +  mongod -dbpath "D:\MongoDB\Server\3.4\Data\db" -logpath "D:\MongoDB\Server\3.4\Data\log\MongoDB.log" -install -serviceName "MongoDB"
   + Start MongoDB Service
-    net start mongodb
+    +  net start mongodb
   + Stop MongoDB Service
-    net stop mongodb
+    +  net stop mongodb
   + Un-register MongoDB Service
-    mongod -dbpath "D:\MongoDB\Server\3.4\Data\db" -logpath "D:\MongoDB\Server\3.4\Data\log\MongoDB.log" -remove -serviceName "MongoDB"
+    +  mongod -dbpath "D:\MongoDB\Server\3.4\Data\db" -logpath "D:\MongoDB\Server\3.4\Data\log\MongoDB.log" -remove -serviceName "MongoDB"
 + VC++ VS2013 Runtime: https://www.microsoft.com/en-gb/download/details.aspx?id=40784
 + CTP Account: Register at http://simnow.com.cn/
-+ CTP Config: Update ctpGateway\CTP_connect.json with your account, password, broker id, trade/market server address.
++ CTP Config: Update ctpGateway\CTP_connect.json with your
+  + account
+  + password
+  + broker id
+  + trade server address
+  + market server address
