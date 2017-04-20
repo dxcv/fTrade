@@ -25,7 +25,7 @@ class BacktestingEngine(object):
     函数接口和策略引擎保持一样，
     从而实现同一套代码从回测到实盘。
     """
-    
+
     TICK_MODE = 'tick'
     BAR_MODE = 'bar'
 
@@ -35,12 +35,12 @@ class BacktestingEngine(object):
         # 本地停止单编号计数
         self.stopOrderCount = 0
         # stopOrderID = STOPORDERPREFIX + str(stopOrderCount)
-        
+
         # 本地停止单字典
         # key为stopOrderID，value为stopOrder对象
         self.stopOrderDict = {}             # 停止单撤销后不会从本字典中删除
         self.workingStopOrderDict = {}      # 停止单撤销后会从本字典中删除
-        
+
         # 引擎类型为回测
         self.engineType = ENGINETYPE_BACKTESTING
         

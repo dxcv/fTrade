@@ -21,10 +21,10 @@ for root, subdirs, files in os.walk(path):
         if 'strategy' in name and '.pyc' not in name:
             # 模块名称需要上前缀
             moduleName = 'ctaStrategy.strategy.' + name.replace('.py', '')
-            
+
             # 使用importlib动态载入模块
             module = importlib.import_module(moduleName)
-            
+
             # 遍历模块下的对象，只有名称中包含'Strategy'的才是策略类
             for k in dir(module):
                 if 'Strategy' in k:

@@ -41,7 +41,7 @@ class AtrRsiStrategy(CtaTemplate):
     highArray = np.zeros(bufferSize)    # K线最高价的数组
     lowArray = np.zeros(bufferSize)     # K线最低价的数组
     closeArray = np.zeros(bufferSize)   # K线收盘价的数组
-    
+
     atrCount = 0                        # 目前已经缓存了的ATR的计数
     atrArray = np.zeros(bufferSize)     # ATR指标的数组
     atrValue = 0                        # 最新的ATR指标数值
@@ -80,7 +80,7 @@ class AtrRsiStrategy(CtaTemplate):
     def __init__(self, ctaEngine, setting):
         """Constructor"""
         super(AtrRsiStrategy, self).__init__(ctaEngine, setting)
-        
+
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
         # 策略类中的这些可变对象属性可以选择不写，全都放在__init__下面，写主要是为了阅读
@@ -90,7 +90,7 @@ class AtrRsiStrategy(CtaTemplate):
     def onInit(self):
         """初始化策略（必须由用户继承实现）"""
         self.writeCtaLog(u'%s策略初始化' %self.name)
-    
+
         # 初始化RSI入场阈值
         self.rsiBuy = 50 + self.rsiEntry
         self.rsiSell = 50 - self.rsiEntry
@@ -159,11 +159,11 @@ class AtrRsiStrategy(CtaTemplate):
         self.closeArray[0:self.bufferSize-1] = self.closeArray[1:self.bufferSize]
         self.highArray[0:self.bufferSize-1] = self.highArray[1:self.bufferSize]
         self.lowArray[0:self.bufferSize-1] = self.lowArray[1:self.bufferSize]
-        
+
         self.closeArray[-1] = bar.close
         self.highArray[-1] = bar.high
         self.lowArray[-1] = bar.low
-        
+
         self.bufferCount += 1
         if self.bufferCount < self.bufferSize:
             return
@@ -186,7 +186,7 @@ class AtrRsiStrategy(CtaTemplate):
                                   self.rsiLength)[-1]
 
         # 判断是否要进行交易
-        
+
         # 当前无仓位
         if self.pos == 0:
             self.intraTradeHigh = bar.high
@@ -241,51 +241,51 @@ if __name__ == '__main__':
     # 导入PyQt4的包是为了保证matplotlib使用PyQt4而不是PySide，防止初始化出错
     from ctaBacktesting import *
     from PyQt4 import QtCore, QtGui
-    
+
     # 创建回测引擎
     engine = BacktestingEngine()
-    
+
     # 设置引擎的回测模式为K线
     engine.setBacktestingMode(engine.BAR_MODE)
 
     # 设置回测用的数据起始日期
     engine.setStartDate('20120101')
-    
+
     # 设置产品相关参数
     engine.setSlippage(0.2)     # 股指1跳
     engine.setRate(0.3/10000)   # 万0.3
     engine.setSize(300)         # 股指合约大小 
     engine.setPriceTick(0.2)    # 股指最小价格变动
-    
+
     # 设置使用的历史数据库
     engine.setDatabase(MINUTE_DB_NAME, 'IF0000')
-    
+
     # 在引擎中创建策略对象
     d = {'atrLength': 11}
     engine.initStrategy(AtrRsiStrategy, d)
-    
+
     # 开始跑回测
     engine.runBacktesting()
-    
+
     # 显示回测结果
     engine.showBacktestingResult()
-    
+
     ## 跑优化
     #setting = OptimizationSetting()                 # 新建一个优化任务设置对象
     #setting.setOptimizeTarget('capital')            # 设置优化排序的目标是策略净盈利
     #setting.addParameter('atrLength', 12, 20, 2)    # 增加第一个优化参数atrLength，起始11，结束12，步进1
     #setting.addParameter('atrMa', 20, 30, 5)        # 增加第二个优化参数atrMa，起始20，结束30，步进1
     #setting.addParameter('rsiLength', 5)            # 增加一个固定数值的参数
-    
+
     ## 性能测试环境：I7-3770，主频3.4G, 8核心，内存16G，Windows 7 专业版
     ## 测试时还跑着一堆其他的程序，性能仅供参考
     #import time    
     #start = time.time()
-    
+
     ## 运行单进程优化函数，自动输出结果，耗时：359秒
     #engine.runOptimization(AtrRsiStrategy, setting)            
-    
+
     ## 多进程优化，耗时：89秒
     ##engine.runParallelOptimization(AtrRsiStrategy, setting)     
-    
+
     #print u'耗时：%s' %(time.time()-start)
