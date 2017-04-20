@@ -183,7 +183,7 @@ class EmaDemoStrategy(CtaTemplate):
     #----------------------------------------------------------------------
     def onTrade(self, trade):
         """收到成交推送（必须由用户继承实现）"""
-        # 对于无需做细粒度委托控制的策略，可以忽略onOrder
+        # 对于无需做细粒度成交控制的策略，可以忽略onTrade
         pass
 
 
@@ -200,7 +200,6 @@ class OrderManagementDemoStrategy(CtaTemplate):
     # 策略变量
     bar = None
     barMinute = EMPTY_STRING
-
 
     # 参数列表，保存了参数的名称
     paramList = ['name',
@@ -267,12 +266,10 @@ class OrderManagementDemoStrategy(CtaTemplate):
 
         # 不成交，即撤单，并追单
         if self.lastOrder != None and self.lastOrder.status == u'未成交':
-
             self.cancelOrder(self.lastOrder.vtOrderID)
             self.lastOrder = None
         elif self.lastOrder != None and self.lastOrder.status == u'已撤销':
         # 追单并设置为不能成交
-
             self.sendOrder(self.orderType, self.tick.lastprice - 10, 1)
             self.lastOrder = None
 
@@ -290,5 +287,5 @@ class OrderManagementDemoStrategy(CtaTemplate):
     #----------------------------------------------------------------------
     def onTrade(self, trade):
         """收到成交推送（必须由用户继承实现）"""
-        # 对于无需做细粒度委托控制的策略，可以忽略onOrder
+        # 对于无需做细粒度成交控制的策略，可以忽略onTrade
         pass
