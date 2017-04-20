@@ -11,7 +11,7 @@ from uiMainWindow import *
 
 # 文件路径名
 path = os.path.abspath(os.path.dirname(__file__))    
-ICON_FILENAME = 'vnpy.ico'
+ICON_FILENAME = 'logo.bmp'
 ICON_FILENAME = os.path.join(path, ICON_FILENAME)  
 
 SETTING_FILENAME = 'VT_setting.json'
