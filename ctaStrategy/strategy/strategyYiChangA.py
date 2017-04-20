@@ -33,6 +33,7 @@ class YiChangAStrategy(CtaTemplate):
     # 策略变量
     rangeHigh = EMPTY_FLOAT     # 区间最高价
     rangeLow  = EMPTY_FLOAT     # 区间最低价
+    traded = False              # 是否已经交易过
 
     # 参数列表，保存了参数的名称
     paramList = ['name',
@@ -48,7 +49,8 @@ class YiChangAStrategy(CtaTemplate):
                'trading',
                'pos',
                'rangeHigh',
-               'rangeLow']  
+               'rangeLow',
+               'traded']  
 
     #----------------------------------------------------------------------
     def __init__(self, ctaEngine, setting):
@@ -74,6 +76,7 @@ class YiChangAStrategy(CtaTemplate):
         """启动策略（必须由用户继承实现）"""
         self.writeCtaLog(u'易昌A策略启动')
         self.putEvent()
+        traded = False
 
     #----------------------------------------------------------------------
     def onStop(self):
@@ -108,10 +111,12 @@ class YiChangAStrategy(CtaTemplate):
         # 开始交易
         elif tickTime < clearTime:
             if self.pos == 0: # 开仓
-                if tick.lastPrice > rangeHigh:
+                if tick.lastPrice > rangeHigh and traded == False:
                     self.sendOrder(CTAORDER_BUY, price, volume, stop)
-                elif tick.lastPrice < rangeLow:
+                    traded = True
+                elif tick.lastPrice < rangeLow and traded == False:
                     self.sendOrder(CTAORDER_SHORT, price, volume, stop)
+                    traded = True
             else: # 平仓
                 if abs(tick.lastPrice - price) > abs(rangeHigh - rangeLow) * self.rangeRatio:
                     if self.pos < 0:
