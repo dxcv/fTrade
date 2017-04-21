@@ -33,6 +33,7 @@ class YiChangAStrategy(CtaTemplate):
     # 策略变量
     rangeHigh = EMPTY_FLOAT     # 区间最高价
     rangeLow  = EMPTY_FLOAT     # 区间最低价
+    tradeAllowed = False        # 是否可以交易
     traded = False              # 是否已经交易过
     tradeDate = None            # 最近成交日期
 
@@ -51,6 +52,7 @@ class YiChangAStrategy(CtaTemplate):
                'pos',
                'rangeHigh',
                'rangeLow',
+               'tradeReady',
                'traded',
                'tradeDate']  
 
@@ -69,6 +71,7 @@ class YiChangAStrategy(CtaTemplate):
 
         self.rangeHigh = EMPTY_FLOAT     # 区间最高价
         self.rangeLow  = EMPTY_FLOAT     # 区间最低价
+        self.tradeReady = False          # 是否可以交易
         self.traded = False              # 是否已经交易过
         self.tradeDate = None            # 最近成交日期
 
@@ -95,8 +98,10 @@ class YiChangAStrategy(CtaTemplate):
         """收到行情TICK推送（必须由用户继承实现）"""
         # 计算控制变量
         today = dt.date.today()
-        if self.tradeDate != today: # 每天只做一次交易
-            self.traded = False
+        if self.tradeDate != today:     # 新的一个交易日，开始初始化
+            self.tradeReady = False     # 是否可以交易
+            self.traded = False         # 每天只做一次交易
+            self.tradeDate = today      # 更新交易日期，确保每天初始化一次
         openTime  = dt.datetime(today.year, today.month, today.day,  9, 0, 0, 0) # Today, 09:00:00
         closeTime = dt.datetime(today.year, today.month, today.day, 15, 0, 0, 0) # Today, 15:00:00
         openDeltaTime  = dt.timedelta(minutes=self.minuteOpen)
@@ -116,17 +121,17 @@ class YiChangAStrategy(CtaTemplate):
                 self.rangeHigh = tick.lastPrice
             if self.rangeLow == EMPTY_FLOAT or self.rangeLow > tick.lastPrice:
                 self.rangeLow = tick.lastPrice
+        if self.rangeHigh != EMPTY_FLOAT and self.rangeLow != EMPTY_FLOAT:
+            self.tradeReady = True    # 每日价格区间的高低点都已经更新过了，才可以开始交易
         # 开始交易
         elif tickTime < clearTime:
             if self.pos == 0: # 开仓
-                if tick.lastPrice > self.rangeHigh and self.traded == False:
+                if tick.lastPrice > self.rangeHigh and self.traded == False and self.tradeReady == True:
                     self.sendOrder(CTAORDER_BUY, price, volume, stop)
                     self.traded = True
-                    self.tradeDate = today
-                elif tick.lastPrice < self.rangeLow and self.traded == False:
+                elif tick.lastPrice < self.rangeLow and self.traded == False and self.tradeReady == True:
                     self.sendOrder(CTAORDER_SHORT, price, volume, stop)
                     self.traded = True
-                    self.tradeDate = today
             else: # 平仓
                 if self.pos > 0: # 买开
                     if abs(tick.lastPrice - self.rangeHigh) > abs(self.rangeHigh - self.rangeLow) * self.rangeRatio:
