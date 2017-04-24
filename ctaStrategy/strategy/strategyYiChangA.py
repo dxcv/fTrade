@@ -115,30 +115,34 @@ class YiChangAStrategy(CtaTemplate):
         volume = 1
         stop = True
 
-        # 更新区间高低点 
-        if tickTime < rangeTime:
+        # 更新区间高低点
+        if tickTime < openTime: # 早上开盘之前可能会收到推送的昨晚收盘价
+            pass
+        elif tickTime < rangeTime:
             if self.rangeHigh == EMPTY_FLOAT or self.rangeHigh < tick.lastPrice:
                 self.rangeHigh = tick.lastPrice
             if self.rangeLow == EMPTY_FLOAT or self.rangeLow > tick.lastPrice:
                 self.rangeLow = tick.lastPrice
-        if self.rangeHigh != EMPTY_FLOAT and self.rangeLow != EMPTY_FLOAT:
-            self.tradeReady = True    # 每日价格区间的高低点都已经更新过了，才可以开始交易
         # 开始交易
         elif tickTime < clearTime:
-            if self.pos == 0: # 开仓
-                if tick.lastPrice > self.rangeHigh and self.traded == False and self.tradeReady == True:
-                    self.sendOrder(CTAORDER_BUY, price, volume, stop)
-                    self.traded = True
-                elif tick.lastPrice < self.rangeLow and self.traded == False and self.tradeReady == True:
-                    self.sendOrder(CTAORDER_SHORT, price, volume, stop)
-                    self.traded = True
-            else: # 平仓
-                if self.pos > 0: # 买开
-                    if abs(tick.lastPrice - self.rangeHigh) > abs(self.rangeHigh - self.rangeLow) * self.rangeRatio:
-                        self.sendOrder(CTAORDER_SELL, price, volume, stop) # 卖平
-                if self.pos < 0: # 卖开
-                    if abs(tick.lastPrice - self.rangeLow) > abs(self.rangeHigh - self.rangeLow) * self.rangeRatio:
-                        self.sendOrder(CTAORDER_COVER, price, volume, stop) # 买平
+            if not self.tradeReady:
+                if self.rangeHigh != EMPTY_FLOAT and self.rangeLow != EMPTY_FLOAT:
+                    self.tradeReady = True    # 每日价格区间的高低点都已经更新过了，才可以开始交易
+            if self.tradeReady:
+                if self.pos == 0: # 开仓
+                    if tick.lastPrice > self.rangeHigh and not self.traded:
+                        self.sendOrder(CTAORDER_BUY, price, volume, stop)
+                        self.traded = True
+                    elif tick.lastPrice < self.rangeLow and not self.traded:
+                        self.sendOrder(CTAORDER_SHORT, price, volume, stop)
+                        self.traded = True
+                else: # 平仓
+                    if self.pos > 0: # 买开
+                        if abs(tick.lastPrice - self.rangeHigh) > abs(self.rangeHigh - self.rangeLow) * self.rangeRatio:
+                            self.sendOrder(CTAORDER_SELL, price, volume, stop) # 卖平
+                    if self.pos < 0: # 卖开
+                        if abs(tick.lastPrice - self.rangeLow) > abs(self.rangeHigh - self.rangeLow) * self.rangeRatio:
+                            self.sendOrder(CTAORDER_COVER, price, volume, stop) # 买平
         # 清仓
         else:
             if self.pos < 0:
