@@ -69,6 +69,11 @@ class YiChangAStrategy(CtaTemplate):
         self.minuteClose = 3     # 收盘分钟数，用于清仓触发
         self.rangeRatio  = 1.0   # 区间比例，用于控制止盈止损幅度
 
+        self.initVariables()
+
+    #----------------------------------------------------------------------
+    def initVariables(self):
+        """初始化策略所使用的变量"""
         self.rangeHigh = EMPTY_FLOAT     # 区间最高价
         self.rangeLow  = EMPTY_FLOAT     # 区间最低价
         self.tradeReady = False          # 是否可以交易
@@ -78,6 +83,7 @@ class YiChangAStrategy(CtaTemplate):
     #----------------------------------------------------------------------
     def onInit(self):
         """初始化策略（必须由用户继承实现）"""
+        self.initVariables()
         self.writeCtaLog(u'易昌A策略初始化')
         self.putEvent()
 
@@ -99,8 +105,7 @@ class YiChangAStrategy(CtaTemplate):
         # 计算控制变量
         today = dt.date.today()
         if self.tradeDate != today:     # 新的一个交易日，开始初始化
-            self.tradeReady = False     # 是否可以交易
-            self.traded = False         # 每天只做一次交易
+            self.initVariables()
             self.tradeDate = today      # 更新交易日期，确保每天初始化一次
         openTime  = dt.datetime(today.year, today.month, today.day,  9, 0, 0, 0) # Today, 09:00:00
         closeTime = dt.datetime(today.year, today.month, today.day, 15, 0, 0, 0) # Today, 15:00:00
