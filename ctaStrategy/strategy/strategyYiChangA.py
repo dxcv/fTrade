@@ -58,7 +58,7 @@ class YiChangAStrategy(CtaTemplate):
                'tradeReady',
                'orderSent',
                'orderID',
-               'orderTraded'
+               'orderTraded',
                'traded',
                'tradeDate']
 
