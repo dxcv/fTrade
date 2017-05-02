@@ -26,8 +26,9 @@ class YiChangAStrategy(CtaTemplate):
     author = 'freefrom'
 
     # 策略参数
-    minuteOpen  = 60    # 开盘分钟数，用于区间统计
+    minuteOpen  = 30    # 开盘分钟数，用于区间统计
     minuteClose = 3     # 收盘分钟数，用于清仓触发
+    secondCheck = 10    # 检查委托是否成交的时间限制
     rangeRatio  = 1.0   # 区间比例，用于控制止盈止损幅度
 
     # 策略变量
@@ -35,7 +36,8 @@ class YiChangAStrategy(CtaTemplate):
     rangeLow  = EMPTY_FLOAT     # 区间最低价
     tradeReady = False          # 是否可以交易
     orderSent = False           # 是否已经发送当前委托
-    orderID = EMPTY_INT         # 当前委托号
+    orderID = ''                # 当前委托号
+    orderTime = None            # 当前委托确认成交截止时间
     orderTraded = False         # 是否当前委托已经成交
     traded = False              # 当日是否开过仓
     tradeDate = None            # 当前交易日期
@@ -47,6 +49,7 @@ class YiChangAStrategy(CtaTemplate):
                  'vtSymbol',
                  'minuteOpen',
                  'minuteClose',
+                 'secondCheck',
                  'rangeRatio']    
 
     # 变量列表，保存了变量的名称
@@ -58,6 +61,7 @@ class YiChangAStrategy(CtaTemplate):
                'tradeReady',
                'orderSent',
                'orderID',
+               'orderTime',
                'orderTraded',
                'traded',
                'tradeDate']
@@ -71,11 +75,16 @@ class YiChangAStrategy(CtaTemplate):
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
         # 策略类中的这些可变对象属性可以选择不写，全都放在__init__下面，写主要是为了阅读
         # 策略时方便（更多是个编程习惯的选择）
-        self.minuteOpen  = 60    # 开盘分钟数，用于区间统计
-        self.minuteClose = 3     # 收盘分钟数，用于清仓触发
-        self.rangeRatio  = 1.0   # 区间比例，用于控制止盈止损幅度
-
+        self.initParameters()
         self.initVariables()
+
+    #----------------------------------------------------------------------
+    def initParameters(self):
+        """初始化策略所使用的参数"""
+        self.minuteOpen  = 30    # 开盘分钟数，用于区间统计
+        self.minuteClose = 3     # 收盘分钟数，用于清仓触发
+        self.secondCheck = 10    # 检查委托是否成交的时间限制
+        self.rangeRatio  = 1.0   # 区间比例，用于控制止盈止损幅度
 
     #----------------------------------------------------------------------
     def initVariables(self):
@@ -83,11 +92,17 @@ class YiChangAStrategy(CtaTemplate):
         self.rangeHigh = EMPTY_FLOAT     # 区间最高价
         self.rangeLow  = EMPTY_FLOAT     # 区间最低价
         self.tradeReady = False          # 是否可以交易
-        self.orderSent = False           # 是否已经发送当前委托
-        self.orderID = EMPTY_INT         # 当前委托号
-        self.orderTraded = False         # 是否当前委托已经成交
+        self.initOrderVariables()        # 初始化委托相关变量
         self.traded = False              # 当日是否开过仓
         self.tradeDate = None            # 当前交易日期
+
+    #----------------------------------------------------------------------
+    def initOrderVariables(self):
+        """初始化策略所使用的委托相关的变量"""
+        self.orderSent = False
+        self.orderID = ''
+        self.orderTime = None
+        self.orderTraded = False
 
     #----------------------------------------------------------------------
     def onInit(self):
@@ -109,6 +124,29 @@ class YiChangAStrategy(CtaTemplate):
         self.putEvent()
 
     #----------------------------------------------------------------------
+    def checkOrderStatus(self):
+        """检查当前委托是否完成"""
+        if self.orderTime != None and (dt.datetime.now() < self.orderTime):
+            order = self.ctaEngine.mainEngine.getOrder(self.orderID) # 查询委托对象
+            if order != None: # 如果查询成功
+                self.writeCtaLog(u'当前委托查询成功：%s' % self.orderID)
+                orderFinished = (order.status==STATUS_ALLTRADED)
+                if orderFinished: # 委托完成
+                    self.orderTraded = True # 当前委托交易完成
+                    self.writeCtaLog(u'当前委托已经完成：%s' % self.orderID)
+                    if not self.traded: # 当日还未开过仓
+                        self.traded = True # 当日已经开过仓
+                        self.writeCtaLog(u'当日已经开仓交易：%s' % self.orderID)
+                else: # 委托失败，需要重新发送
+                    self.initOrderVariables()
+                    self.writeCtaLog(u'当前委托失败，需要根据最新情况决定是否再次发送：%s' % self.orderID)
+            else:
+                self.writeCtaLog(u'当前委托查询失败：%s' % self.orderID)
+        else: # Time Out
+            self.initOrderVariables()
+            self.writeCtaLog(u'当前委托确认超时，需要根据最新情况决定是否再次发送：%s' % self.orderID)
+
+    #----------------------------------------------------------------------
     def onTick(self, tick):
         """收到行情TICK推送（必须由用户继承实现）"""
         # 计算控制变量
@@ -126,29 +164,12 @@ class YiChangAStrategy(CtaTemplate):
         tickTime = tick.datetime
 
         # 设置订单参数
-        price = tick.lastPrice
         volume = 1
-        stop = True
+        stop = False
 
         # 查询当前委托及其成交状况
-        if self.orderSent and not self.orderTraded: # 已经发送委托，但尚未成交
-            order = self.mainEngine.getOrder(self.orderID) # 查询委托对象
-            if order: # 如果查询成功
-                self.writeCtaLog(u'当前委托查询成功：%d' % self.orderID)
-                orderFinished = (order.status==STATUS_ALLTRADED)
-                if orderFinished: # 委托完成
-                    self.orderTraded = True # 当前委托交易完成
-                    self.writeCtaLog(u'当前委托已经完成：%d' % self.orderID)
-                    if not self.traded: # 当日还未开过仓
-                        self.traded = True # 当日已经开过仓
-                        self.writeCtaLog(u'当日已经开仓交易：%d' % self.orderID)
-                else: # 委托失败，需要重新发送
-                    self.orderSent = False
-                    self.orderID = EMPTY_INT
-                    self.orderTraded = False
-                    self.writeCtaLog(u'当前委托失败，需要根据最新情况决定是否再次发送：%d' % self.orderID)
-            else:
-                self.writeCtaLog(u'当前委托查询失败：%d' % self.orderID)
+        if self.orderSent and not self.orderTraded: # 已经发送委托，但尚未确认成交
+            self.checkOrderStatus()
 
         # 更新区间高低点
         if tickTime < openTime: # 早上开盘之前可能会收到推送的昨晚收盘价
@@ -171,34 +192,40 @@ class YiChangAStrategy(CtaTemplate):
             if self.tradeReady:
                 if self.pos == 0: # 开仓
                     if tick.lastPrice > self.rangeHigh and not self.traded and not self.orderSent:
-                        self.orderID = self.sendOrder(CTAORDER_BUY, price, volume, stop)
+                        self.orderID = self.sendOrder(CTAORDER_BUY, tick.upperLimit, volume, stop)
                         self.orderSent = True
-                        self.writeCtaLog(u'价格突破区间上限，发送买开委托：%d' % self.orderID)
+                        self.orderTime = dt.datetime.now() + dt.timedelta(seconds=self.secondCheck)
+                        self.writeCtaLog(u'价格突破区间上限，发送买开委托：%s' % self.orderID)
                     elif tick.lastPrice < self.rangeLow and not self.traded and not self.orderSent:
-                        self.orderID = self.sendOrder(CTAORDER_SHORT, price, volume, stop)
+                        self.orderID = self.sendOrder(CTAORDER_SHORT, tick.lowerLimit, volume, stop)
                         self.orderSent = True
-                        self.writeCtaLog(u'价格突破区间下限，发送卖开委托：%d' % self.orderID)
+                        self.orderTime = dt.datetime.now() + dt.timedelta(seconds=self.secondCheck)
+                        self.writeCtaLog(u'价格突破区间下限，发送卖开委托：%s' % self.orderID)
                 else: # 平仓
                     if self.pos > 0: # 买开
                         if abs(tick.lastPrice - self.rangeHigh) > abs(self.rangeHigh - self.rangeLow) * self.rangeRatio and not self.orderSent:
-                            self.orderID = self.sendOrder(CTAORDER_SELL, price, volume, stop) # 卖平
+                            self.orderID = self.sendOrder(CTAORDER_SELL, tick.lowerLimit, volume, stop) # 卖平
                             self.orderSent = True
-                            self.writeCtaLog(u'价格触及止盈止损，发送卖平委托：%d' % self.orderID)
+                            self.orderTime = dt.datetime.now() + dt.timedelta(seconds=self.secondCheck)
+                            self.writeCtaLog(u'价格触及止盈止损，发送卖平委托：%s' % self.orderID)
                     if self.pos < 0: # 卖开
                         if abs(tick.lastPrice - self.rangeLow) > abs(self.rangeHigh - self.rangeLow) * self.rangeRatio and not self.orderSent:
-                            self.orderID = self.sendOrder(CTAORDER_COVER, price, volume, stop) # 买平
+                            self.orderID = self.sendOrder(CTAORDER_COVER, tick.upperLimit, volume, stop) # 买平
                             self.orderSent = True
-                            self.writeCtaLog(u'价格触及止盈止损，发送买平委托：%d' % self.orderID)
+                            self.orderTime = dt.datetime.now() + dt.timedelta(seconds=self.secondCheck)
+                            self.writeCtaLog(u'价格触及止盈止损，发送买平委托：%s' % self.orderID)
         # 清仓
         else:
             if self.pos < 0 and not self.orderSent:
-                self.orderID = self.sendOrder(CTAORDER_COVER, price, volume, stop)
+                self.orderID = self.sendOrder(CTAORDER_COVER, tick.upperLimit, volume, stop) # 买平
                 self.orderSent = True
-                self.writeCtaLog(u'触及时间退场，发送买平委托：%d' % self.orderID)
+                self.orderTime = dt.datetime.now() + dt.timedelta(seconds=self.secondCheck)
+                self.writeCtaLog(u'触及时间退场，发送买平委托：%s' % self.orderID)
             elif self.pos > 0 and not self.orderSent:
-                self.orderID = self.sendOrder(CTAORDER_SELL, price, volume, stop)
+                self.orderID = self.sendOrder(CTAORDER_SELL, tick.lowerLimit, volume, stop) # 卖平
                 self.orderSent = True
-                self.writeCtaLog(u'触及时间退场，发送卖平委托：%d' % self.orderID)
+                self.orderTime = dt.datetime.now() + dt.timedelta(seconds=self.secondCheck)
+                self.writeCtaLog(u'触及时间退场，发送卖平委托：%s' % self.orderID)
 
         # 发出状态更新事件
         self.putEvent()
@@ -211,9 +238,9 @@ class YiChangAStrategy(CtaTemplate):
     #----------------------------------------------------------------------
     def onOrder(self, order):
         """收到委托变化推送（必须由用户继承实现）"""
-        self.writeCtaLog(u'委托状态变化，最新状态：%d, %s' % (self.orderID, order.status))
+        self.writeCtaLog(u'委托状态变化，最新状态：%s, %s' % (self.orderID, order.status))
 
     #----------------------------------------------------------------------
     def onTrade(self, trade):
         """收到成交推送（必须由用户继承实现）"""
-        self.writeCtaLog(u'委托交易完成：%d' % self.orderID)
+        self.writeCtaLog(u'委托交易完成：%s' % self.orderID)
