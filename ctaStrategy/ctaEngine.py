@@ -437,9 +437,14 @@ class CtaEngine(object):
         if name in self.strategyDict:
             strategy = self.strategyDict[name]
 
-            if strategy.inited and not strategy.trading:
-                strategy.trading = True
-                self.callStrategyFunc(strategy, strategy.onStart)
+            if strategy.inited:
+                if not strategy.trading:
+                    strategy.trading = True
+                    self.callStrategyFunc(strategy, strategy.onStart)
+                else:
+                    self.writeCtaLog(u'策略实例已经启动：%s' %name)
+            else:
+                self.writeCtaLog(u'请先初始化策略实例，然后再启动：%s' %name)
         else:
             self.writeCtaLog(u'策略实例不存在：%s' %name)
 
@@ -461,9 +466,9 @@ class CtaEngine(object):
                 # 对该策略发出的所有本地停止单撤单
                 for stopOrderID, so in self.workingStopOrderDict.items():
                     if so.strategy is strategy:
-                        self.cancelStopOrder(stopOrderID)   
+                        self.cancelStopOrder(stopOrderID)
         else:
-            self.writeCtaLog(u'策略实例不存在：%s' %name)        
+            self.writeCtaLog(u'策略实例不存在：%s' %name)
 
     #----------------------------------------------------------------------
     def saveSetting(self):

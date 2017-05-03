@@ -1003,8 +1003,9 @@ class CtpTdApi(TdApi):
         
         order.direction = directionMapReverse.get(data['Direction'], DIRECTION_UNKNOWN)
         order.offset = offsetMapReverse.get(data['CombOffsetFlag'], OFFSET_UNKNOWN)
-        order.status = statusMapReverse.get(data['OrderStatus'], STATUS_UNKNOWN)            
-            
+        order.status = statusMapReverse.get(data['OrderStatus'], STATUS_UNKNOWN)
+        print('OrderStatus', data['OrderStatus'])
+
         # 价格、报单量等数值
         order.price = data['LimitPrice']
         order.totalVolume = data['VolumeTotalOriginal']

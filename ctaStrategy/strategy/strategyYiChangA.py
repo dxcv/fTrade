@@ -14,6 +14,7 @@ Created on Thu Apr 20 16:20:17 2017
 """
 
 from ctaBase import *
+from vtConstant import *
 from ctaTemplate import CtaTemplate
 
 import datetime as dt
@@ -138,23 +139,27 @@ class YiChangAStrategy(CtaTemplate):
                         self.traded = True # 当日已经开过仓
                         self.writeCtaLog(u'当日已经开仓交易：%s' % self.orderID)
                 else: # 委托失败，需要重新发送
-                    self.initOrderVariables()
                     self.writeCtaLog(u'当前委托失败，需要根据最新情况决定是否再次发送：%s' % self.orderID)
+                    self.initOrderVariables()
             else:
                 self.writeCtaLog(u'当前委托查询失败：%s' % self.orderID)
         else: # Time Out
-            self.initOrderVariables()
             self.writeCtaLog(u'当前委托确认超时，需要根据最新情况决定是否再次发送：%s' % self.orderID)
+            self.initOrderVariables()
 
     #----------------------------------------------------------------------
     def onTick(self, tick):
         """收到行情TICK推送（必须由用户继承实现）"""
+        # 检查策略实例是否已经启动
+        if not self.trading:
+            return
+
         # 计算控制变量
         today = dt.date.today()
         if self.tradeDate != today:     # 新的一个交易日，开始初始化
             self.initVariables()
+            self.writeCtaLog(u'新的交易日开始，重新初始化：%s to %s' % (str(self.tradeDate), str(today)))
             self.tradeDate = today      # 更新交易日期，确保每天初始化一次
-            self.writeCtaLog(u'新的交易日开始，重新初始化：%s' % str(self.tradeDate))
         openTime  = dt.datetime(today.year, today.month, today.day,  9, 0, 0, 0) # Today, 09:00:00
         closeTime = dt.datetime(today.year, today.month, today.day, 15, 0, 0, 0) # Today, 15:00:00
         openDeltaTime  = dt.timedelta(minutes=self.minuteOpen)
