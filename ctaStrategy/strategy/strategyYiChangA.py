@@ -138,6 +138,7 @@ class YiChangAStrategy(CtaTemplate):
                     if not self.traded: # 当日还未开过仓
                         self.traded = True # 当日已经开过仓
                         self.writeCtaLog(u'当日已经开仓交易：%s' % self.orderID)
+                    self.initOrderVariables()
                 else: # 委托失败，需要重新发送
                     self.writeCtaLog(u'当前委托失败，需要根据最新情况决定是否再次发送：%s' % self.orderID)
                     self.initOrderVariables()
